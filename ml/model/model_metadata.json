@@ -1,0 +1,27 @@
+{
+  "model_type": "IsolationForest",
+  "n_estimators": 200,
+  "features": [
+    "total_tilt_deg",
+    "tilt_rate_deg_per_hr",
+    "displacement_mm",
+    "displacement_rate_mm_per_hr",
+    "vibration_rms_g",
+    "vibration_rolling_mean_3",
+    "displacement_delta_baseline",
+    "tilt_delta_baseline",
+    "crack_status",
+    "neighbor_anomaly_count",
+    "subsidence_velocity_index"
+  ],
+  "score_normalization": {
+    "min_decision_value": -0.3024866355394349,
+    "max_decision_value": 0.15790268936509977
+  },
+  "training_samples_count": 30000,
+  "trained_timestamp": "2026-08-26T18:46:53.449804",
+  "performance": {
+    "normal_score_mean": 0.14871443660465952,
+    "critical_score_mean": 0.9634976787010326
+  }
+}

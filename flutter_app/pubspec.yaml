@@ -1,0 +1,45 @@
+name: mineguard
+description: "AI-Enabled Real-Time Mine Subsidence Monitoring, Prediction & Early Warning System for Underground Coal Mines in India (SIH 2026 - Team RED HACK)"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # State Management
+  flutter_riverpod: ^2.5.1
+
+  # Networking & Real-Time Telemetry
+  dio: ^5.4.3+1
+  web_socket_channel: ^2.4.5
+  http: ^1.2.1
+
+  # GIS & Spatial Mapping (PostGIS integration)
+  flutter_map: ^6.1.0
+  latlong2: ^0.9.1
+
+  # Industrial Engineering Charts & Waveforms
+  fl_chart: ^0.68.0
+
+  # Persistence & Local Caching
+  shared_preferences: ^2.2.3
+
+  # Localization & Formatting
+  intl: ^0.19.0
+
+  # UI Polish & Icons
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.2
+
+flutter:
+  uses-material-design: true

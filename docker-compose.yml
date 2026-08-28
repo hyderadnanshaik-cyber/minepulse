@@ -1,0 +1,98 @@
+version: '3.9'
+
+services:
+  # PostgreSQL 18 + PostGIS
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: mine_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mine_monitoring
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mine_monitoring"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Eclipse Mosquitto MQTT Broker
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mine_mqtt
+    restart: unless-stopped
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_logs:/mosquitto/log
+    ports:
+      - "1883:1883"
+      - "9001:9001"  # WebSocket MQTT
+
+  # FastAPI Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mine_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-changeme}@postgres:5432/mine_monitoring
+      - MQTT_BROKER_HOST=mosquitto
+      - MQTT_BROKER_PORT=1883
+      - ENVIRONMENT=production
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./ml/model:/app/ml_model
+
+  # 20-Node Simulator (development only)
+  simulator:
+    build:
+      context: ./simulator
+      dockerfile: Dockerfile
+    container_name: mine_simulator
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+    environment:
+      - MQTT_BROKER_HOST=mosquitto
+      - MQTT_BROKER_PORT=1883
+      - NODE_COUNT=20
+      - SIMULATION_SPEED=1.0
+    profiles:
+      - simulation
+
+  # ML Worker
+  ml:
+    build:
+      context: ./ml
+      dockerfile: Dockerfile
+    container_name: mine_ml
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://postgres:${POSTGRES_PASSWORD:-changeme}@postgres:5432/mine_monitoring
+    volumes:
+      - ./ml/model:/app/model
+      - ./ml/data:/app/data
+
+volumes:
+  postgres_data:
+  mosquitto_data:
+  mosquitto_logs:

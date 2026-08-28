@@ -1,0 +1,81 @@
+# ============================================================
+# MINEGUARD — .gitignore
+# ============================================================
+
+# Environment / secrets — NEVER commit these
+.env
+.env.local
+.env.production
+*.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Large binary / data files
+gateway/edge_buffer.db
+gateway/edge_buffer.db-journal
+gateway/edge_buffer.db-shm
+gateway/edge_buffer.db-wal
+mine_monitoring.db
+mine_monitoring.db-journal
+*.db
+*.sqlite
+
+# ML model binaries — these are large, keep only metadata
+# Uncomment the next 2 lines if you don't want to push the .joblib files
+# ml/model/isolation_forest.joblib
+# ml/model/feature_scaler.joblib
+
+# ML training data CSVs (large synthetic datasets)
+ml/data/
+
+# Docker volumes / local data
+postgres_data/
+mosquitto_data/
+mosquitto_logs/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# VSCode / JetBrains
+.vscode/
+.idea/
+*.suo
+*.user
+
+# Logs
+*.log
+logs/
+
+# Coverage / test artifacts
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Flutter build artifacts
+flutter_app/build/
+flutter_app/.dart_tool/
+flutter_app/.flutter-plugins
+flutter_app/.flutter-plugins-dependencies

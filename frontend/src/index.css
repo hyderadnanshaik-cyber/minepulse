@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  body {
+    background-color: #f8fafc; /* bg-slate-50 */
+    color: #0f172a; /* text-slate-900 */
+  }
+
+  /* RTL / Urdu typography enhancement */
+  html[dir="rtl"] {
+    font-family: system-ui, -apple-system, 'Segoe UI', Tahoma, 'Noto Sans Arabic', 'Noto Nastaliq Urdu', sans-serif;
+  }
+
+  html[lang="hi"] {
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans Devanagari', 'Mukta', sans-serif;
+  }
+}
+
+/* Custom utility for hiding scrollbars while maintaining scrollability */
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* RTL mirror utilities */
+  html[dir="rtl"] .rtl-flip {
+    transform: scaleX(-1);
+  }
+}

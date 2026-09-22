@@ -9,7 +9,9 @@ import logging
 import asyncio
 from datetime import datetime
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 
@@ -380,8 +382,20 @@ async def websocket_gateway(websocket: WebSocket):
     except WebSocketDisconnect:
         ws_manager.disconnect(websocket, channel="gateway")
 
-@app.get("/")
-async def root():
+# Locate frontend/dist directory for unified single-origin deployments
+dist_dirs = [
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "dist"),
+    os.path.abspath("frontend/dist"),
+    os.path.abspath("../frontend/dist"),
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend", "dist"),
+]
+dist_path = next((d for d in dist_dirs if os.path.exists(d) and os.path.isdir(d)), None)
+
+if dist_path and os.path.exists(os.path.join(dist_path, "assets")):
+    app.mount("/assets", StaticFiles(directory=os.path.join(dist_path, "assets")), name="static_assets")
+
+@app.get("/api/system/info")
+async def system_info():
     return {
         "system": "MINEGUARD Mine Subsidence Monitoring System",
         "problem": "SIH26025",
@@ -393,6 +407,36 @@ async def root():
         "offline_first": True,
         "docs": "/docs"
     }
+
+@app.get("/")
+async def root():
+    if dist_path:
+        index_html = os.path.join(dist_path, "index.html")
+        if os.path.isfile(index_html):
+            return FileResponse(index_html)
+    return {
+        "system": "MINEGUARD Mine Subsidence Monitoring System",
+        "problem": "SIH26025",
+        "team": "RED HACK",
+        "status": "OPERATIONAL",
+        "docs": "/docs"
+    }
+
+@app.get("/{full_path:path}")
+async def serve_spa_catchall(full_path: str):
+    # Do not intercept API, docs, Swagger, or WS routes
+    if full_path.startswith("api") or full_path in ["docs", "redoc", "openapi.json"] or full_path.startswith("ws"):
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    if dist_path:
+        target = os.path.join(dist_path, full_path)
+        if os.path.isfile(target):
+            return FileResponse(target)
+        index_html = os.path.join(dist_path, "index.html")
+        if os.path.isfile(index_html):
+            return FileResponse(index_html)
+
+    raise HTTPException(status_code=404, detail="Not Found")
 
 if __name__ == "__main__":
     import uvicorn

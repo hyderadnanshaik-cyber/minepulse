@@ -7,7 +7,9 @@ class WebSocketClient {
   private handlers: Map<string, Set<MessageHandler>> = new Map();
   private isExplicitlyClosed: boolean = false;
   constructor() {
-    const wsBase = import.meta.env.VITE_WS_BASE_URL || "ws://localhost:8000";
+    // Auto-detect protocol + host so it works on Vercel (wss://) and localhost (ws://)
+    const wsBase = import.meta.env.VITE_WS_BASE_URL ||
+      `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}`;
     this.url = `${wsBase}/ws/live`;
   }
   public connect(): void {

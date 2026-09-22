@@ -7,9 +7,17 @@ from typing import Dict, Any, List, Optional, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, func
 import numpy as np
-import joblib
-from sklearn.ensemble import IsolationForest
-from sklearn.preprocessing import StandardScaler
+
+try:
+    import joblib
+    from sklearn.ensemble import IsolationForest
+    from sklearn.preprocessing import StandardScaler
+    HAS_SKLEARN = True
+except ImportError:
+    joblib = None
+    IsolationForest = None
+    StandardScaler = None
+    HAS_SKLEARN = False
 
 from app.models.ai_prediction import AIPrediction
 from app.models.sensor_reading import SensorReading
@@ -77,6 +85,10 @@ class AIService:
     @classmethod
     def _load_model_artifacts(cls):
         """Loads trained IsolationForest model and feature scaler from disk."""
+        if not HAS_SKLEARN:
+            logger.info("scikit-learn is not installed in this environment. Running in Kinematic-Rule fallback mode.")
+            return
+
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
         model_dir = os.path.join(base_dir, "ml", "model")
         model_path = os.path.join(model_dir, "isolation_forest.joblib")
@@ -698,6 +710,16 @@ class AIService:
     @classmethod
     async def train_model(cls, db: AsyncSession) -> AITrainResponse:
         """Retrains the Isolation Forest model on historical telemetry readings from PostgreSQL."""
+        if not HAS_SKLEARN:
+            cls._last_trained = datetime.now()
+            return AITrainResponse(
+                status="FALLBACK",
+                message="scikit-learn is not installed in this environment. Geotechnical kinematic rule engine is active.",
+                samples_used=0,
+                trained_at=cls._last_trained,
+                model_version="v2.0-kinematic"
+            )
+
         query = select(SensorReading).order_by(desc(SensorReading.id)).limit(10000)
         res = await db.execute(query)
         readings = list(res.scalars().all())

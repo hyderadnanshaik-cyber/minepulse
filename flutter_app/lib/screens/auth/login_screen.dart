@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../dashboard/dashboard_screen.dart';
-import '../../core/theme/app_theme.dart';
-import '../../providers/locale_provider.dart';
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_spacing.dart';
+import '../../widgets/app_shell.dart';
+import '../../widgets/language_selector.dart';
+import '../../widgets/ui_kit.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -17,372 +19,235 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _obscurePassword = true;
   bool _rememberMe = true;
   bool _isSignUp = false;
+  bool _loading = false;
 
-  void _handleLogin() {
+  Future<void> _handleLogin() async {
+    setState(() => _loading = true);
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const DashboardScreen()),
+      MaterialPageRoute(builder: (_) => const AppShell()),
     );
   }
 
   @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final currentLocale = ref.watch(localeProvider);
+    final wide = MediaQuery.of(context).size.width >= 900;
+
+    final form = _LoginForm(
+      emailController: _emailController,
+      passwordController: _passwordController,
+      obscurePassword: _obscurePassword,
+      rememberMe: _rememberMe,
+      isSignUp: _isSignUp,
+      loading: _loading,
+      onToggleObscure: () => setState(() => _obscurePassword = !_obscurePassword),
+      onRemember: (v) => setState(() => _rememberMe = v),
+      onToggleMode: (signUp) => setState(() => _isSignUp = signUp),
+      onSubmit: _handleLogin,
+    );
 
     return Scaffold(
-      backgroundColor: const Color(0xFF070B14),
+      backgroundColor: AppColors.background,
       body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            // Top App Bar with Language Picker
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: wide
+            ? Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.white.withOpacity(0.1)),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.shield_outlined, size: 14, color: Colors.white70),
-                        SizedBox(width: 6),
-                        Text(
-                          'SIH 2026',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Language Segmented Control
-                  Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+                  Expanded(child: _BrandPanel()),
+                  Expanded(child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 440), child: form))),
+                ],
+              )
+            : Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
                     child: Row(
                       children: [
-                        _buildLangBtn('EN', 'en', currentLocale.languageCode),
-                        _buildLangBtn('हिन्दी', 'hi', currentLocale.languageCode),
-                        _buildLangBtn('اردو', 'ur', currentLocale.languageCode),
+                        const Icon(Icons.shield_outlined, color: AppColors.accent, size: 18),
+                        const SizedBox(width: 8),
+                        Text('MINEGUARD', style: Theme.of(context).textTheme.titleMedium),
+                        const Spacer(),
+                        const LanguageSelector(),
                       ],
                     ),
                   ),
+                  Expanded(child: SingleChildScrollView(padding: const EdgeInsets.all(20), child: form)),
                 ],
               ),
-            ),
-
-            // Header Section
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryBlue,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(Icons.lock_person_rounded, color: Colors.white, size: 22),
-                    ),
-                    const SizedBox(height: 14),
-                    const Text(
-                      'Get Started now',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'DGMS Certified Mine Monitoring & Geotechnical Console',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF94A3B8),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Curved Bottom White Card
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(36)),
-                ),
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Tab Switcher [Log In | Sign Up]
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () => setState(() => _isSignUp = false),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 10),
-                                  decoration: BoxDecoration(
-                                    color: !_isSignUp ? Colors.white : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(10),
-                                    boxShadow: !_isSignUp
-                                        ? [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 4)]
-                                        : null,
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: Text(
-                                    'Log In',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w800,
-                                      color: !_isSignUp ? const Color(0xFF0F172A) : const Color(0xFF64748B),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () => setState(() => _isSignUp = true),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 10),
-                                  decoration: BoxDecoration(
-                                    color: _isSignUp ? Colors.white : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(10),
-                                    boxShadow: _isSignUp
-                                        ? [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 4)]
-                                        : null,
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: Text(
-                                    'Sign Up',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w800,
-                                      color: _isSignUp ? const Color(0xFF0F172A) : const Color(0xFF64748B),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Instant SIH Dev Mode Button
-                      Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF4338CA), Color(0xFF2563EB)],
-                          ),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(14),
-                            onTap: _handleLogin,
-                            child: const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.bolt_rounded, color: Colors.amberAccent, size: 18),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'Instant Station Access (SIH 2026 Demo Mode)',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Email Field
-                      const Text(
-                        'OPERATOR EMAIL',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF64748B),
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      TextField(
-                        controller: _emailController,
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                        decoration: InputDecoration(
-                          prefixIcon: const Icon(Icons.email_outlined, size: 18, color: Color(0xFF94A3B8)),
-                          filled: true,
-                          fillColor: const Color(0xFFF8FAFC),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-
-                      // Password Field
-                      const Text(
-                        'PASSCODE',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF64748B),
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      TextField(
-                        controller: _passwordController,
-                        obscureText: _obscurePassword,
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                        decoration: InputDecoration(
-                          prefixIcon: const Icon(Icons.lock_outline_rounded, size: 18, color: Color(0xFF94A3B8)),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                              size: 18,
-                              color: const Color(0xFF94A3B8),
-                            ),
-                            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                          ),
-                          filled: true,
-                          fillColor: const Color(0xFFF8FAFC),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-
-                      // Remember Me & Forgot Password
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              SizedBox(
-                                height: 24,
-                                width: 24,
-                                child: Checkbox(
-                                  value: _rememberMe,
-                                  activeColor: AppTheme.primaryBlue,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                                  onChanged: (val) => setState(() => _rememberMe = val ?? true),
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              const Text(
-                                'Remember me',
-                                style: TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
-                          const Text(
-                            'Forgot Password?',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppTheme.primaryBlue,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 18),
-
-                      // Log In Submit Button
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _handleLogin,
-                          child: const Text('Log In to Monitoring Console'),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Footer
-                      const Center(
-                        child: Text(
-                          'MINEGUARD v1.0.0 • Azure PostgreSQL 18 + PostGIS',
-                          style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
+}
 
-  Widget _buildLangBtn(String label, String code, String currentCode) {
-    final isSelected = currentCode == code;
-    return GestureDetector(
-      onTap: () => ref.read(localeProvider.notifier).setLocale(code),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+class _BrandPanel extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.surfaceMuted,
+      padding: const EdgeInsets.all(40),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const LanguageSelector(),
+          const SizedBox(height: 32),
+          const Icon(Icons.shield_outlined, size: 36, color: AppColors.accent),
+          const SizedBox(height: 16),
+          Text('MINEGUARD', style: Theme.of(context).textTheme.displaySmall?.copyWith(fontSize: 32, letterSpacing: 2)),
+          const SizedBox(height: 12),
+          const Text(
+            'REAL-TIME MINE SUBSIDENCE MONITORING & EARLY WARNING SYSTEM',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.5, letterSpacing: 0.3),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Operator console for underground coal mine geotechnical monitoring.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LoginForm extends StatelessWidget {
+  final TextEditingController emailController;
+  final TextEditingController passwordController;
+  final bool obscurePassword;
+  final bool rememberMe;
+  final bool isSignUp;
+  final bool loading;
+  final VoidCallback onToggleObscure;
+  final ValueChanged<bool> onRemember;
+  final ValueChanged<bool> onToggleMode;
+  final VoidCallback onSubmit;
+
+  const _LoginForm({
+    required this.emailController,
+    required this.passwordController,
+    required this.obscurePassword,
+    required this.rememberMe,
+    required this.isSignUp,
+    required this.loading,
+    required this.onToggleObscure,
+    required this.onRemember,
+    required this.onToggleMode,
+    required this.onSubmit,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(isSignUp ? 'Create operator account' : 'Operator sign in', style: Theme.of(context).textTheme.headlineMedium),
+        const SizedBox(height: 6),
+        const Text(
+          'Authorized personnel only. Mine safety command access.',
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-            color: isSelected ? const Color(0xFF0F172A) : Colors.white70,
+        const SizedBox(height: 20),
+        Container(
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceMuted,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            children: [
+              _tab(context, 'Sign in', !isSignUp, () => onToggleMode(false)),
+              _tab(context, 'Register', isSignUp, () => onToggleMode(true)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        Text('EMAIL', style: Theme.of(context).textTheme.labelSmall),
+        const SizedBox(height: 6),
+        TextField(
+          controller: emailController,
+          keyboardType: TextInputType.emailAddress,
+          decoration: const InputDecoration(
+            hintText: 'operator@mine.gov.in',
+            prefixIcon: Icon(Icons.mail_outline, size: 18, color: AppColors.textMuted),
+          ),
+        ),
+        const SizedBox(height: 14),
+        Text('PASSWORD', style: Theme.of(context).textTheme.labelSmall),
+        const SizedBox(height: 6),
+        TextField(
+          controller: passwordController,
+          obscureText: obscurePassword,
+          decoration: InputDecoration(
+            hintText: '••••••••',
+            prefixIcon: const Icon(Icons.lock_outline, size: 18, color: AppColors.textMuted),
+            suffixIcon: IconButton(
+              tooltip: obscurePassword ? 'Show password' : 'Hide password',
+              icon: Icon(
+                obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                size: 18,
+                color: AppColors.textMuted,
+              ),
+              onPressed: onToggleObscure,
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            SizedBox(
+              height: 24,
+              width: 24,
+              child: Checkbox(
+                value: rememberMe,
+                onChanged: (v) => onRemember(v ?? true),
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Text('Remember this station', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+          ],
+        ),
+        const SizedBox(height: 18),
+        PrimaryButton(
+          label: isSignUp ? 'Register and enter console' : 'Enter monitoring console',
+          icon: Icons.login,
+          loading: loading,
+          onPressed: onSubmit,
+        ),
+        const SizedBox(height: 16),
+        const Text(
+          'MINEGUARD  v1.0.0  •  SIH 2026',
+          style: TextStyle(fontSize: 10, color: AppColors.textMuted),
+        ),
+      ],
+    );
+  }
+
+  Widget _tab(BuildContext context, String label, bool selected, VoidCallback onTap) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.surface : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: selected ? AppColors.textPrimary : AppColors.textMuted,
+            ),
           ),
         ),
       ),

@@ -4,18 +4,11 @@ import '../core/network/api_client.dart';
 import '../core/constants/api_constants.dart';
 
 final aiStatusProvider = FutureProvider<Map<String, dynamic>>((ref) async {
-  try {
-    final res = await apiClient.get(ApiConstants.aiStatus);
-    if (res.statusCode == 200 && res.data is Map) {
-      return Map<String, dynamic>.from(res.data);
-    }
-  } catch (_) {}
-  return {
-    'model_version': 'v2.1.0-IsolationForest-Hybrid',
-    'is_trained': true,
-    'model_accuracy': 0.9635,
-    'active_nodes_monitored': 20,
-  };
+  final res = await apiClient.get(ApiConstants.aiStatus);
+  if (res.statusCode == 200 && res.data is Map) {
+    return Map<String, dynamic>.from(res.data);
+  }
+  throw Exception('AI model status unavailable');
 });
 
 final recentPredictionsProvider = FutureProvider<List<PredictionModel>>((ref) async {

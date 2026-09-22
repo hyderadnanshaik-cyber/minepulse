@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import '../core/theme/app_theme.dart';
+import '../core/theme/app_colors.dart';
 import '../models/alert_model.dart';
+import '../core/utils/risk_utils.dart';
+import 'risk_badge.dart';
 
 class SubsidenceAlertDialog extends StatelessWidget {
   final AlertModel alert;
@@ -17,143 +19,64 @@ class SubsidenceAlertDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isCritical = alert.severity.toUpperCase() == 'CRITICAL';
+    final color = AppColors.forRisk(alert.severity);
 
     return Dialog(
-      backgroundColor: const Color(0xFF111827),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: color.withOpacity(0.6)),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(22),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Warning Icon Badge
-            Container(
-              height: 72,
-              width: 72,
-              decoration: BoxDecoration(
-                color: isCritical
-                    ? Colors.white.withOpacity(0.12)
-                    : AppTheme.warningAmber.withOpacity(0.2),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isCritical ? Colors.white.withOpacity(0.25) : AppTheme.warningAmber,
-                  width: 2,
-                ),
-              ),
-              child: Icon(
-                Icons.warning_amber_rounded,
-                size: 40,
-                color: isCritical ? Colors.white : AppTheme.warningAmber,
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Headline
+            Icon(Icons.warning_amber_rounded, size: 36, color: color),
+            const SizedBox(height: 12),
             Text(
-              isCritical
-                  ? 'SUBSIDENCE WARNING: CRITICAL GROUND DEFORMATION'
-                  : 'ELEVATED STRATA HAZARD DETECTED',
+              isCritical ? 'CRITICAL SUBSIDENCE ALERT' : 'SUBSIDENCE WARNING',
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-                letterSpacing: -0.2,
-              ),
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, letterSpacing: 0.4),
+            ),
+            const SizedBox(height: 8),
+            RiskBadge(riskLevel: alert.severity, score: alert.riskScore),
+            const SizedBox(height: 12),
+            Text(
+              RiskUtils.displayNodeCode(alert.nodeId),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: 0.6),
             ),
             const SizedBox(height: 8),
             Text(
               alert.message,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.white.withOpacity(0.7),
-                height: 1.4,
-              ),
+              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Time  ${alert.detectedAt.toLocal().toString().split('.').first}',
+              style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
             ),
             const SizedBox(height: 20),
-
-            // Telemetry Snapshot Box
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
-              ),
-              child: Column(
-                children: [
-                  _buildRow('Monitored Node', alert.nodeId, isMono: true),
-                  const Divider(color: Colors.white12, height: 16),
-                  _buildRow('Risk Score', '${alert.riskScore.toStringAsFixed(1)} / 100',
-                      valueColor: AppTheme.criticalRed),
-                  const SizedBox(height: 6),
-                  _buildRow('Anomaly Confidence', '${(alert.anomalyScore * 100).toStringAsFixed(0)}%',
-                      valueColor: AppTheme.warningAmber),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Action Buttons
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xFF0F172A),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
+                style: ElevatedButton.styleFrom(backgroundColor: color),
                 onPressed: onAcknowledge,
-                child: const Text(
-                  'Acknowledge Alert & Dispatch Siren (GPIO 18)',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
-                ),
+                child: const Text('Acknowledge'),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  side: BorderSide(color: Colors.white.withOpacity(0.2)),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
                 onPressed: onViewGis,
-                child: const Text(
-                  'View Live GIS Coordinates & Waveform',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-                ),
+                child: const Text('View on map'),
               ),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildRow(String label, String value, {bool isMono = false, Color? valueColor}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.5)),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-            fontFamily: isMono ? 'monospace' : null,
-            color: valueColor ?? Colors.white,
-          ),
-        ),
-      ],
     );
   }
 }

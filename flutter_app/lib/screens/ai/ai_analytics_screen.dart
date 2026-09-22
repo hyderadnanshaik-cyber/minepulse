@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/theme/app_theme.dart';
 import '../../core/network/api_client.dart';
 import '../../core/constants/api_constants.dart';
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_spacing.dart';
+import '../../core/utils/risk_utils.dart';
 import '../../providers/ai_provider.dart';
+import '../../widgets/app_card.dart';
 import '../../widgets/risk_badge.dart';
+import '../../widgets/ui_kit.dart';
 
 class AiAnalyticsScreen extends ConsumerStatefulWidget {
   const AiAnalyticsScreen({super.key});
@@ -20,15 +24,17 @@ class _AiAnalyticsScreenState extends ConsumerState<AiAnalyticsScreen> {
     setState(() => _isRetraining = true);
     try {
       final res = await apiClient.post(ApiConstants.aiTrain);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('✅ ${res.data['message'] ?? 'Model Retrained on PostgreSQL Samples'}'),
-          backgroundColor: AppTheme.safeEmerald,
-        ),
-      );
+      if (!mounted) return;
+      final msg = res.data is Map ? (res.data['message'] ?? 'Retrain requested') : 'Retrain requested';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$msg')));
       ref.invalidate(aiStatusProvider);
       ref.invalidate(recentPredictionsProvider);
-    } catch (_) {}
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to start model retraining')),
+      );
+    }
     setState(() => _isRetraining = false);
   }
 
@@ -37,162 +43,121 @@ class _AiAnalyticsScreenState extends ConsumerState<AiAnalyticsScreen> {
     final statusAsync = ref.watch(aiStatusProvider);
     final predictionsAsync = ref.watch(recentPredictionsProvider);
 
-    return Scaffold(
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // AI Status & Model Version Card
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.borderSubtle),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.psychology_rounded, color: AppTheme.primaryBlue, size: 22),
-                          SizedBox(width: 8),
-                          Text(
-                            'ISOLATION FOREST RISK ENGINE',
-                            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
-                          ),
-                        ],
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFD1FAE5),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          'ACTIVE INFERENCE',
-                          style: TextStyle(color: AppTheme.safeEmerald, fontWeight: FontWeight.w900, fontSize: 10),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  statusAsync.when(
-                    data: (status) => Column(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppSpacing.pagePadding),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.psychology_outlined, color: AppColors.accent, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text('AI MODEL STATUS', style: Theme.of(context).textTheme.titleMedium)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                statusAsync.when(
+                  data: (status) {
+                    final trained = status['is_trained'] == true;
+                    return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Model Version: ${status['model_version']}',
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
-                        const SizedBox(height: 4),
-                        Text('Calibrated Metric: ROC-AUC ${status['model_accuracy'] ?? 0.9635} (11 Feature Channels)',
-                            style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
-                      ],
-                    ),
-                    loading: () => const CircularProgressIndicator(),
-                    error: (_, __) => const SizedBox(),
-                  ),
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                      ),
-                      icon: _isRetraining
-                          ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.sync_rounded, size: 16),
-                      label: Text(_isRetraining ? 'Retraining Model...' : 'Recalibrate on Live DB Telemetry'),
-                      onPressed: _isRetraining ? null : _triggerRetrain,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Explainable Inference Stream
-            const Text(
-              'RECENT MULTI-FACTOR AI RISK PREDICTIONS',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF64748B),
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            predictionsAsync.when(
-              data: (preds) => ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: preds.length,
-                itemBuilder: (context, idx) {
-                  final pred = preds[idx];
-                  final isHazard = pred.riskLevel == 'CRITICAL' || pred.riskLevel == 'HIGH';
-
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: isHazard ? const Color(0xFFFEF2F2) : Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: isHazard ? AppTheme.criticalRed.withOpacity(0.4) : AppTheme.borderSubtle,
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              pred.nodeId,
-                              style: const TextStyle(fontWeight: FontWeight.w900, fontFamily: 'monospace'),
+                        StatusBadge(
+                          label: trained ? 'CONNECTED' : 'INITIALIZING',
+                          color: trained ? AppColors.riskLow : AppColors.riskMedium,
+                        ),
+                        const SizedBox(height: 10),
+                        if (status['model_version'] != null)
+                          Text('Version  ${status['model_version']}', style: Theme.of(context).textTheme.bodyMedium),
+                        if (status['model_accuracy'] != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              'Reported metric  ${status['model_accuracy']}',
+                              style: Theme.of(context).textTheme.bodySmall,
                             ),
-                            RiskBadge(riskLevel: pred.riskLevel, score: pred.riskScore),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'ML Anomaly Score: ${pred.anomalyScore.toStringAsFixed(3)} • Confidence: ${(pred.confidence * 100).toStringAsFixed(0)}%',
-                          style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
-                        ),
-                        if (pred.triggeredIndicators != null && pred.triggeredIndicators!.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 4,
-                            runSpacing: 4,
-                            children: pred.triggeredIndicators!.map((ind) {
-                              return Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.withOpacity(0.08),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  ind.toString(),
-                                  style: const TextStyle(fontSize: 10, color: AppTheme.criticalRed, fontWeight: FontWeight.bold),
-                                ),
-                              );
-                            }).toList(),
                           ),
-                        ],
                       ],
+                    );
+                  },
+                  loading: () => const Text('Checking model…'),
+                  error: (_, __) => const StatusBadge(
+                    label: 'NOT AVAILABLE',
+                    color: AppColors.riskHigh,
+                    icon: Icons.cloud_off,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                OutlinedButton.icon(
+                  onPressed: _isRetraining ? null : _triggerRetrain,
+                  icon: _isRetraining
+                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.sync, size: 16),
+                  label: Text(_isRetraining ? 'Retraining…' : 'Recalibrate on live telemetry'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          const SectionHeader(title: 'Recent predictions'),
+          predictionsAsync.when(
+            data: (preds) {
+              if (preds.isEmpty) {
+                return const AppCard(child: Text('No predictions available'));
+              }
+              return Column(
+                children: preds.map((pred) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: AppCard(
+                      borderColor: AppColors.forRisk(pred.riskLevel).withOpacity(0.4),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                RiskUtils.displayNodeCode(pred.nodeId),
+                                style: const TextStyle(fontWeight: FontWeight.w800),
+                              ),
+                              const Spacer(),
+                              RiskBadge(riskLevel: pred.riskLevel, score: pred.riskScore),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Anomaly  ${pred.anomalyScore.toStringAsFixed(3)}  •  Confidence  ${(pred.confidence * 100).toStringAsFixed(0)}%',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          Text(
+                            pred.createdAt.toLocal().toString().split('.').first,
+                            style: Theme.of(context).textTheme.labelSmall,
+                          ),
+                          if (pred.triggeredIndicators != null && pred.triggeredIndicators!.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: pred.triggeredIndicators!
+                                  .map((ind) => StatusBadge(label: ind.toString(), color: AppColors.riskCritical))
+                                  .toList(),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   );
-                },
-              ),
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, _) => Center(child: Text('Error loading AI predictions: $err')),
-            ),
-          ],
-        ),
+                }).toList(),
+              );
+            },
+            loading: () => const LoadingState(message: 'Loading predictions…'),
+            error: (err, _) => ErrorState(message: 'Unable to retrieve predictions'),
+          ),
+        ],
       ),
     );
   }

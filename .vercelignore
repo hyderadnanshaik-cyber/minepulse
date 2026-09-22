@@ -1,14 +1,11 @@
-# Exclude heavy/unnecessary dirs from Vercel build
-node_modules
-frontend/node_modules
-flutter_app
-firmware
-mosquitto
-simulator
-gateway
-tests
-docs
-scratch
+# Exclude heavy/unnecessary dirs from Vercel build (anchored to root with /)
+/flutter_app
+/firmware
+/mosquitto
+/simulator
+/tests
+/docs
+/scratch
 *.db
 *.sqlite
 .git
